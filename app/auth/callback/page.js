@@ -1,9 +1,9 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { exchangeCodeForToken, getUserInfo } from '../../../lib/googleAuth';
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -96,5 +96,34 @@ export default function AuthCallback() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        fontFamily: "'Inter', sans-serif",
+        backgroundColor: '#ffc27e'
+      }}>
+        <div style={{
+          textAlign: 'center',
+          color: '#18204aff'
+        }}>
+          <div style={{
+            fontSize: '24px',
+            marginBottom: '16px'
+          }}>
+            Loading...
+          </div>
+        </div>
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
