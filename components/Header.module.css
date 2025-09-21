@@ -1,0 +1,137 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  position: relative;
+  z-index: 5;
+}
+
+.logo {
+  font-size: 34px;
+  font-weight: 700;
+  color: #18204aff;
+  font-family: 'Inter', sans-serif;
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.submitButton {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: 2px solid #18204aff;
+  background: white;
+  color: #18204aff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  position: relative;
+  z-index: 6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.submitButton:hover {
+  background: #18204aff;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 32, 74, 0.3);
+}
+
+.loginButton {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: #18204aff;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.loginButton:hover {
+  border: 1px solid #18204aff;
+  background: white;
+  color: #18204aff;
+}
+
+.loginButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loadingText {
+  font-size: 14px;
+  color: #666;
+  font-family: 'Inter', sans-serif;
+}
+
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #18204aff;
+}
+
+.userAvatarFallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #18204aff;
+  background: #18204aff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: 'Inter', sans-serif;
+}
+
+.userName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #18204aff;
+  font-family: 'Inter', sans-serif;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logoutButton {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #ff4444;
+  background: transparent;
+  color: #ff4444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.logoutButton:hover {
+  background: #ff4444;
+  color: white;
+}

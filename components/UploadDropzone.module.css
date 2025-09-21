@@ -1,0 +1,71 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.dropzone {
+  border: 3px dashed #18204aff;
+  border-radius: 12px;
+  padding: 60px;
+  text-align: center;
+  background-color: #f55c4a;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  width: 50%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.dropzone:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.dropzoneText {
+  font-size: 24px;
+  font-weight: 600;
+  color: #18204aff;
+  text-align: center;
+}
+
+.fileInfo {
+  font-size: 14px;
+  color: #666;
+  margin-top: 8px;
+  position: absolute;
+  bottom: 20px;
+}
+
+.testDataButton {
+  padding: 12px 24px;
+  background: #18204aff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.testDataButton:hover {
+  background: #0f1a3a;
+  transform: translateY(-1px);
+}
+
+.errorMessage {
+  color: #ff4444;
+  text-align: center;
+  padding: 12px;
+  background-color: rgba(255, 68, 68, 0.1);
+  border-radius: 6px;
+  border: 1px solid #ff4444;
+  max-width: 50%;
+  margin: 0 auto;
+}

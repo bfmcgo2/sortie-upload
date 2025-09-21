@@ -1,0 +1,127 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: #ffc27e;
+  padding: 40px;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.title {
+  font-family: 'Inter', sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: #18204aff;
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.locationInput {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 6px;
+  border: 2px solid #ddd;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #18204aff;
+}
+
+.removeButton {
+  padding: 8px 12px;
+  background: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.removeButton:hover {
+  background: #cc0000;
+}
+
+.addButton {
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: #18204aff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+}
+
+.addButton:hover {
+  background: #0f1a3a;
+}
+
+.buttonContainer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+  gap: 16px;
+}
+
+.cancelButton {
+  flex: 1;
+  padding: 12px 24px;
+  background: transparent;
+  color: #18204aff;
+  border: 2px solid #18204aff;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.cancelButton:hover {
+  background: #18204aff;
+  color: white;
+}
+
+.continueButton {
+  flex: 1;
+  padding: 12px 24px;
+  background: #18204aff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.continueButton:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
