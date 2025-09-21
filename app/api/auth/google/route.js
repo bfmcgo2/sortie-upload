@@ -9,18 +9,24 @@ export async function POST(req) {
     }
 
     // Exchange authorization code for access token
+    const tokenParams = {
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: 'https://sortie-upload.vercel.app/auth/callback',
+    };
+    
+    console.log('=== TOKEN EXCHANGE DEBUG ===');
+    console.log('Token params:', { ...tokenParams, client_secret: '***hidden***' });
+    console.log('Redirect URI:', tokenParams.redirect_uri);
+    
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: 'https://sortie-upload.vercel.app/auth/callback',
-      }),
+      body: new URLSearchParams(tokenParams),
     });
 
     if (!tokenResponse.ok) {
