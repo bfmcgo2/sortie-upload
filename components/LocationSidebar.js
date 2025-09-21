@@ -142,7 +142,7 @@ export default function LocationSidebar({ locations, onLocationClick, onLocation
               lineHeight: 1.4,
               fontStyle: 'italic'
             }}>
-              "{location.mention.length > 80 ? location.mention.substring(0, 80) + '...' : location.mention}"
+              &ldquo;{location.mention.length > 80 ? location.mention.substring(0, 80) + '...' : location.mention}&rdquo;
             </p>
           </div>
         ))}

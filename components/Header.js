@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import Image from 'next/image';
 import styles from './Header.module.css';
 import { useAuth } from '../hooks/useAuth';
 
@@ -53,9 +54,11 @@ export default function Header({ showSubmitButton = false }) {
         ) : isAuthenticated ? (
           <div className={styles.userSection}>
             <div className={styles.userInfo}>
-              <img 
+              <Image 
                 src={user.picture} 
                 alt={user.name}
+                width={32}
+                height={32}
                 className={styles.userAvatar}
                 onError={(e) => {
                   // Fallback to a default avatar or initials

@@ -89,8 +89,10 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
   useEffect(() => {
     if (!map || !locations?.length) return;
 
-    // Only create markers if we don't have any yet
-    if (markersRef.current.length > 0) return;
+          // Clear existing markers first
+          markersRef.current.forEach(marker => marker.setMap(null));
+          markersRef.current = [];
+          markerElementsRef.current = [];
 
     // Create new markers using AdvancedMarkerElement
     locations.forEach((location, index) => {
@@ -157,10 +159,10 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
       markerElementsRef.current.push(markerElement);
     });
 
-    // Only fit bounds on initial load, not when locations change
-    // This prevents resetting the map view when video overlay closes
-    // map.fitBounds() is now handled separately in the map initialization
-  }, [map]); // Removed locations and onLocationClick from dependencies
+            // Only fit bounds on initial load, not when locations change
+            // This prevents resetting the map view when video overlay closes
+            // map.fitBounds() is now handled separately in the map initialization
+          }, [map, locations, onLocationClick]); // Added dependencies back
 
   // Update marker styles when selection or hover changes
   useEffect(() => {
