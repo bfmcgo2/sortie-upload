@@ -48,8 +48,10 @@ CREATE INDEX IF NOT EXISTS idx_locations_video_id ON locations(video_id);
 ALTER TABLE locations ADD COLUMN IF NOT EXISTS lat DECIMAL(10,8);
 ALTER TABLE locations ADD COLUMN IF NOT EXISTS lng DECIMAL(11,8);
 
--- Create spatial index on lat/lng columns
-CREATE INDEX IF NOT EXISTS idx_locations_lat_lng ON locations USING GIST (lat, lng);
+-- Create indexes on lat/lng columns for coordinate queries
+CREATE INDEX IF NOT EXISTS idx_locations_lat ON locations (lat);
+CREATE INDEX IF NOT EXISTS idx_locations_lng ON locations (lng);
+CREATE INDEX IF NOT EXISTS idx_locations_lat_lng ON locations (lat, lng);
 CREATE INDEX IF NOT EXISTS idx_locations_name ON locations(name);
 CREATE INDEX IF NOT EXISTS idx_locations_place_id ON locations(place_id);
 
