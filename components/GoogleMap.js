@@ -5,25 +5,24 @@ import { Wrapper } from '@googlemaps/react-wrapper';
 function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationIndex, hoveredLocationIndex }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
-  const markersRef = useRef([]);
-  const markerElementsRef = useRef([]);
+          const markersRef = useRef([]);
 
 
   useEffect(() => {
     if (!mapRef.current || !window.google) return;
 
-    // Initialize map
-    const mapInstance = new window.google.maps.Map(mapRef.current, {
-      zoom: 12,
-      center: { lat: 39.9526, lng: -75.1652 }, // Default to Philadelphia
-      mapId: 'DEMO_MAP_ID', // Required for Advanced Markers
-      styles: [
-        {
-          featureType: 'all',
-          elementType: 'geometry.fill',
-          stylers: [{ saturation: -40 }]
-        }
-      ],
+            // Initialize map
+            const mapInstance = new window.google.maps.Map(mapRef.current, {
+              zoom: 12,
+              center: { lat: 39.9526, lng: -75.1652 }, // Default to Philadelphia
+              // Remove mapId to allow custom styles
+              styles: [
+                {
+                  featureType: 'all',
+                  elementType: 'geometry.fill',
+                  stylers: [{ saturation: -40 }]
+                }
+              ],
       // Disable various controls and features
       mapTypeControl: false,        // Removes Map/Satellite toggle
       streetViewControl: false,     // Removes Street View pegman
@@ -89,74 +88,44 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
   useEffect(() => {
     if (!map || !locations?.length) return;
 
-          // Clear existing markers first
-          markersRef.current.forEach(marker => marker.setMap(null));
-          markersRef.current = [];
-          markerElementsRef.current = [];
+            // Clear existing markers first
+            markersRef.current.forEach(marker => marker.setMap(null));
+            markersRef.current = [];
 
-    // Create new markers using AdvancedMarkerElement
-    locations.forEach((location, index) => {
-      if (!location.coordinates) return;
+            // Create new markers with SVG icons
+            locations.forEach((location, index) => {
+              if (!location.coordinates) return;
 
-      // Create marker element
-      const markerElement = document.createElement('div');
-      markerElement.style.cssText = `
-        width: 30px;
-        height: 30px;
-        background: #18204aff;
-        border: 3px solid white;
-        border-radius: 50%;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-        font-size: 12px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        transition: all 0.2s ease;
-      `;
-      markerElement.textContent = (index + 1).toString();
+              // Use regular Marker (AdvancedMarkerElement requires mapId)
+              const marker = new window.google.maps.Marker({
+                position: {
+                  lat: location.coordinates.lat,
+                  lng: location.coordinates.lng
+                },
+                map: map,
+                title: location.name,
+                icon: {
+                  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                    <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="15" cy="15" r="12" fill="#18204aff" stroke="white" stroke-width="3"/>
+                      <text x="15" y="20" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">${index + 1}</text>
+                    </svg>
+                  `),
+                  scaledSize: new window.google.maps.Size(30, 30),
+                  anchor: new window.google.maps.Point(15, 15)
+                },
+                animation: window.google.maps.Animation.DROP
+              });
 
-      // Use AdvancedMarkerElement if available, fallback to regular Marker
-      let marker;
-      if (window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement) {
-        marker = new window.google.maps.marker.AdvancedMarkerElement({
-          position: {
-            lat: location.coordinates.lat,
-            lng: location.coordinates.lng
-          },
-          map: map,
-          title: location.name,
-          content: markerElement
-        });
-      } else {
-        // Fallback to regular marker
-        marker = new window.google.maps.Marker({
-          position: {
-            lat: location.coordinates.lat,
-            lng: location.coordinates.lng
-          },
-          map: map,
-          title: location.name,
-          animation: window.google.maps.Animation.DROP
-        });
-      }
+              // Add click listener
+              const clickHandler = () => {
+                onLocationClick?.(location, index);
+                // No info window popup - just trigger the location click
+              };
 
-      // Add click listener
-      const clickHandler = () => {
-        onLocationClick?.(location, index);
-        // No info window popup - just trigger the location click
-      };
+              marker.addListener('click', clickHandler);
 
-      if (marker.addListener) {
-        marker.addListener('click', clickHandler);
-      } else if (markerElement) {
-        markerElement.addEventListener('click', clickHandler);
-      }
-
-      markersRef.current.push(marker);
-      markerElementsRef.current.push(markerElement);
+              markersRef.current.push(marker);
     });
 
             // Only fit bounds on initial load, not when locations change
@@ -164,22 +133,7 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
             // map.fitBounds() is now handled separately in the map initialization
           }, [map, locations, onLocationClick]); // Added dependencies back
 
-  // Update marker styles when selection or hover changes
-  useEffect(() => {
-    if (!markerElementsRef.current.length) return;
-
-    markerElementsRef.current.forEach((element, index) => {
-      if (!element) return;
-      
-      const isSelected = selectedLocationIndex === index;
-      const isHovered = hoveredLocationIndex === index;
-      const isHighlighted = isSelected || isHovered;
-      
-      element.style.background = isHighlighted ? '#ffffff' : '#18204aff';
-      element.style.border = `3px solid ${isHighlighted ? '#18204aff' : 'white'}`;
-      element.style.color = isHighlighted ? '#18204aff' : 'white';
-    });
-  }, [selectedLocationIndex, hoveredLocationIndex]);
+  // Note: Marker styling is now handled via SVG icons, so no dynamic style updates needed
 
   return (
     <div

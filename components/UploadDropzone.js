@@ -65,8 +65,9 @@ export default function UploadDropzone({ onResults }) {
     processVideo(locations);
   };
 
-  const useTestData = () => {
-    console.log('useTestData called');
+          const useTestData = () => {
+            if (loading) return; // Prevent multiple clicks
+            console.log('useTestData called');
     const testData = {
       generalLocations: ['Philadelphia, PA'],
       locations: [
@@ -317,22 +318,23 @@ export default function UploadDropzone({ onResults }) {
 
         {/* Test Data Button */}
         <div style={{ textAlign: 'center' }}>
-          <button
-            onClick={useTestData}
-            style={{
-              padding: '12px 24px',
-              background: '#18204aff',
-              color: 'white',
-              border: 'none',
-              borderRadius: 8,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: "'Inter', sans-serif"
-            }}
-          >
-            🧪 Use Test Data (Philadelphia)
-          </button>
+                  <button
+                    onClick={useTestData}
+                    disabled={loading}
+                    style={{
+                      padding: '12px 24px',
+                      background: loading ? '#ccc' : '#18204aff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      fontFamily: "'Inter', sans-serif"
+                    }}
+                  >
+                    {loading ? 'Loading...' : '🧪 Use Test Data (Philadelphia)'}
+                  </button>
         </div>
 
         {error && (

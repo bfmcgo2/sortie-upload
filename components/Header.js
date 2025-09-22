@@ -54,18 +54,18 @@ export default function Header({ showSubmitButton = false }) {
         ) : isAuthenticated ? (
           <div className={styles.userSection}>
             <div className={styles.userInfo}>
-              <Image 
-                src={user.picture} 
-                alt={user.name}
-                width={32}
-                height={32}
-                className={styles.userAvatar}
-                onError={(e) => {
-                  // Fallback to a default avatar or initials
-                  e.target.style.display = 'none';
-                  e.target.nextElementSibling.style.display = 'flex';
-                }}
-              />
+                      <img 
+                        src={user.picture} 
+                        alt={user.name}
+                        width={32}
+                        height={32}
+                        className={styles.userAvatar}
+                        onError={(e) => {
+                          // Fallback to a default avatar or initials
+                          e.target.style.display = 'none';
+                          e.target.nextElementSibling.style.display = 'flex';
+                        }}
+                      />
               <div 
                 className={styles.userAvatarFallback}
                 style={{ display: 'none' }}
