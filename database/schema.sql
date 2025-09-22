@@ -44,7 +44,12 @@ CREATE INDEX IF NOT EXISTS idx_videos_created_at ON videos(created_at);
 CREATE INDEX IF NOT EXISTS idx_videos_is_public ON videos(is_public);
 CREATE INDEX IF NOT EXISTS idx_videos_general_locations ON videos USING GIN (general_locations);
 CREATE INDEX IF NOT EXISTS idx_locations_video_id ON locations(video_id);
-CREATE INDEX IF NOT EXISTS idx_locations_coordinates ON locations USING GIST (coordinates);
+-- Create separate lat/lng columns for spatial indexing
+ALTER TABLE locations ADD COLUMN IF NOT EXISTS lat DECIMAL(10,8);
+ALTER TABLE locations ADD COLUMN IF NOT EXISTS lng DECIMAL(11,8);
+
+-- Create spatial index on lat/lng columns
+CREATE INDEX IF NOT EXISTS idx_locations_lat_lng ON locations USING GIST (lat, lng);
 CREATE INDEX IF NOT EXISTS idx_locations_name ON locations(name);
 CREATE INDEX IF NOT EXISTS idx_locations_place_id ON locations(place_id);
 
@@ -225,8 +230,8 @@ BEGIN
   JOIN locations l ON v.id = l.video_id
   WHERE v.is_public = true 
     AND v.processing_status = 'completed'
-    AND (l.coordinates->>'lat')::DECIMAL BETWEEN min_lat AND max_lat
-    AND (l.coordinates->>'lng')::DECIMAL BETWEEN min_lng AND max_lng
+    AND l.lat BETWEEN min_lat AND max_lat
+    AND l.lng BETWEEN min_lng AND max_lng
   GROUP BY v.id, v.title, v.description, v.general_locations, v.created_at
   ORDER BY v.created_at DESC;
 END;
