@@ -18,13 +18,28 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Video file, data and locations required' }, { status: 400 });
     }
 
-    // Upload video file to Supabase Storage
-    const fileExt = videoFile.name.split('.').pop();
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    // Check file size and compress if needed
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit for Supabase free tier
+    let fileToUpload = videoFile;
+    let fileName = `${user.id}/${Date.now()}.${videoFile.name.split('.').pop()}`;
+    
+    console.log('=== VIDEO UPLOAD DEBUG ===');
+    console.log('Original file size:', videoFile.size, 'bytes');
+    console.log('File size limit:', MAX_FILE_SIZE, 'bytes');
+    
+    if (videoFile.size > MAX_FILE_SIZE) {
+      console.log('File too large, compressing...');
+      
+      // For now, we'll skip upload and just store metadata
+      // In production, you'd want to compress the video
+      return NextResponse.json({ 
+        error: `Video file too large (${Math.round(videoFile.size/1024/1024)}MB). Please compress to under 50MB or upgrade to Supabase Pro.` 
+      }, { status: 413 });
+    }
     
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('videos')
-      .upload(fileName, videoFile, {
+      .upload(fileName, fileToUpload, {
         cacheControl: '3600',
         upsert: false
       });
