@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dbHelpers, supabaseAdmin } from '../../../lib/supabase';
+import { uploadToR2, isR2Configured } from '../../../lib/cloudflare-r2';
 
 export async function POST(req) {
   try {
@@ -18,41 +19,31 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Video file, data and locations required' }, { status: 400 });
     }
 
-    // Check file size and compress if needed
-    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit for Supabase free tier
-    let fileToUpload = videoFile;
-    let fileName = `${user.id}/${Date.now()}.${videoFile.name.split('.').pop()}`;
-    
-    console.log('=== VIDEO UPLOAD DEBUG ===');
-    console.log('Original file size:', videoFile.size, 'bytes');
-    console.log('File size limit:', MAX_FILE_SIZE, 'bytes');
-    
-    if (videoFile.size > MAX_FILE_SIZE) {
-      console.log('File too large, compressing...');
-      
-      // For now, we'll skip upload and just store metadata
-      // In production, you'd want to compress the video
+    // Check if Cloudflare R2 is configured
+    if (!isR2Configured()) {
       return NextResponse.json({ 
-        error: `Video file too large (${Math.round(videoFile.size/1024/1024)}MB). Please compress to under 50MB or upgrade to Supabase Pro.` 
-      }, { status: 413 });
+        error: 'Cloudflare R2 not configured. Please add environment variables.' 
+      }, { status: 500 });
     }
+
+    // Convert file to buffer for R2 upload
+    const fileBuffer = Buffer.from(await videoFile.arrayBuffer());
+    const fileName = `${user.id}/${Date.now()}.${videoFile.name.split('.').pop()}`;
     
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-      .from('videos')
-      .upload(fileName, fileToUpload, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (uploadError) {
-      console.error('Video upload error:', uploadError);
-      return NextResponse.json({ error: 'Failed to upload video file' }, { status: 500 });
+    console.log('=== CLOUDFLARE R2 UPLOAD DEBUG ===');
+    console.log('Original file size:', videoFile.size, 'bytes');
+    console.log('File name:', fileName);
+    console.log('File type:', videoFile.type);
+    
+    // Upload to Cloudflare R2 (no file size limits!)
+    const uploadResult = await uploadToR2(fileBuffer, fileName, videoFile.type);
+    
+    if (!uploadResult.success) {
+      return NextResponse.json({ error: 'Failed to upload video file to Cloudflare R2' }, { status: 500 });
     }
 
-    // Get public URL for the uploaded video
-    const { data: urlData } = supabaseAdmin.storage
-      .from('videos')
-      .getPublicUrl(fileName);
+    // Use the R2 URL from upload result
+    const videoUrl = uploadResult.url;
 
     // Prepare video record for database
     const videoRecord = {
@@ -64,7 +55,7 @@ export async function POST(req) {
       video_filename: videoFile.name,
       video_file_type: videoFile.type,
       video_file_size: videoFile.size,
-      video_url: urlData.publicUrl,
+      video_url: videoUrl,
       general_locations: videoData.generalLocations || [],
       transcript: videoData.transcript || null,
       processing_status: 'completed',
