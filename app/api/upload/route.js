@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dbHelpers, supabaseAdmin } from '../../../lib/supabase';
-import { uploadToR2, isR2Configured } from '../../../lib/cloudflare-r2';
+import { uploadToR2, isR2Configured, getR2SignedUrl } from '../../../lib/cloudflare-r2';
 
 export async function POST(req) {
   try {
@@ -42,8 +42,9 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Failed to upload video file to Cloudflare R2' }, { status: 500 });
     }
 
-    // Use the R2 URL from upload result
-    const videoUrl = uploadResult.url;
+    // Generate a signed URL for accessing the video (valid for 7 days)
+    const signedUrl = await getR2SignedUrl(fileName, 7 * 24 * 3600); // 7 days
+    const videoUrl = signedUrl;
 
     // Prepare video record for database
     const videoRecord = {
