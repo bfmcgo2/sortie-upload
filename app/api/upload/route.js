@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { dbHelpers, supabase } from '../../../lib/supabase';
+import { dbHelpers, supabaseAdmin } from '../../../lib/supabase';
 
 export async function POST(req) {
   try {
@@ -22,7 +22,7 @@ export async function POST(req) {
     const fileExt = videoFile.name.split('.').pop();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
     
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('videos')
       .upload(fileName, videoFile, {
         cacheControl: '3600',
@@ -35,7 +35,7 @@ export async function POST(req) {
     }
 
     // Get public URL for the uploaded video
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = supabaseAdmin.storage
       .from('videos')
       .getPublicUrl(fileName);
 
