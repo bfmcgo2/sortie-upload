@@ -148,19 +148,18 @@ export default function Home() {
         description: `A travel video with ${results.locations.length} locations`
       };
 
-      // Upload to Supabase
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user: user,
-          videoData: videoData,
-          locations: results.locations,
-          isPublic: false // Default to private, can be made public later
-        })
-      });
+            // Upload to Supabase using FormData
+            const formData = new FormData();
+            formData.append('user', JSON.stringify(user));
+            formData.append('videoData', JSON.stringify(videoData));
+            formData.append('locations', JSON.stringify(results.locations));
+            formData.append('videoFile', videoFile);
+            formData.append('isPublic', 'false');
+
+            const response = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData
+            });
 
       const result = await response.json();
 

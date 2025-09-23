@@ -1,23 +1,43 @@
 import { NextResponse } from 'next/server';
-import { dbHelpers } from '../../../lib/supabase';
+import { dbHelpers, supabase } from '../../../lib/supabase';
 
 export async function POST(req) {
   try {
-    const { 
-      user, 
-      videoData, 
-      locations, 
-      videoUrl,
-      isPublic = false 
-    } = await req.json();
+    const formData = await req.formData();
+    const user = JSON.parse(formData.get('user'));
+    const videoData = JSON.parse(formData.get('videoData'));
+    const locations = JSON.parse(formData.get('locations'));
+    const videoFile = formData.get('videoFile');
+    const isPublic = formData.get('isPublic') === 'true';
 
     if (!user || !user.email) {
       return NextResponse.json({ error: 'User authentication required' }, { status: 401 });
     }
 
-    if (!videoData || !locations) {
-      return NextResponse.json({ error: 'Video data and locations required' }, { status: 400 });
+    if (!videoData || !locations || !videoFile) {
+      return NextResponse.json({ error: 'Video file, data and locations required' }, { status: 400 });
     }
+
+    // Upload video file to Supabase Storage
+    const fileExt = videoFile.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('videos')
+      .upload(fileName, videoFile, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Video upload error:', uploadError);
+      return NextResponse.json({ error: 'Failed to upload video file' }, { status: 500 });
+    }
+
+    // Get public URL for the uploaded video
+    const { data: urlData } = supabase.storage
+      .from('videos')
+      .getPublicUrl(fileName);
 
     // Prepare video record for database
     const videoRecord = {
@@ -26,10 +46,10 @@ export async function POST(req) {
       user_name: user.name,
       title: videoData.title || `${user.name}'s Video`,
       description: videoData.description || null,
-      video_filename: videoData.filename || null,
-      video_file_type: videoData.fileType || null,
-      video_file_size: videoData.fileSize || null,
-      video_url: videoUrl || null,
+      video_filename: videoFile.name,
+      video_file_type: videoFile.type,
+      video_file_size: videoFile.size,
+      video_url: urlData.publicUrl,
       general_locations: videoData.generalLocations || [],
       transcript: videoData.transcript || null,
       processing_status: 'completed',
