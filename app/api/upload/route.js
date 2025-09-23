@@ -28,7 +28,10 @@ export async function POST(req) {
 
     // Convert file to buffer for R2 upload
     const fileBuffer = Buffer.from(await videoFile.arrayBuffer());
-    const fileName = `${user.id}/${Date.now()}.${videoFile.name.split('.').pop()}`;
+    const fileExt = videoFile.name.split('.').pop().toLowerCase();
+    // Convert .mov to .mp4 for better browser compatibility
+    const normalizedExt = fileExt === 'mov' ? 'mp4' : fileExt;
+    const fileName = `${user.id}/${Date.now()}.${normalizedExt}`;
     
     console.log('=== CLOUDFLARE R2 UPLOAD DEBUG ===');
     console.log('Original file size:', videoFile.size, 'bytes');
@@ -73,7 +76,8 @@ export async function POST(req) {
       success: true,
       video: uploadedVideo,
       locations: uploadedLocations,
-      message: 'Video data uploaded successfully'
+      message: 'Video data uploaded successfully',
+      videoUrl: `/video/${uploadedVideo.id}` // Link to video player page
     });
 
   } catch (error) {

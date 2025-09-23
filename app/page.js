@@ -167,13 +167,17 @@ export default function Home() {
         throw new Error(result.error || 'Upload failed');
       }
 
-      alert('Video submitted successfully! Your travel data has been saved.');
-      
-      // Optionally reset the form or show success state
-      // setResults(null);
-      // setVideoFile(null);
-      // setShowMap(false);
-      // setShowUpload(true);
+              if (result.videoUrl) {
+                alert(`Video submitted successfully! View your video: ${window.location.origin}${result.videoUrl}`);
+              } else {
+                alert('Video submitted successfully! Your travel data has been saved.');
+              }
+              
+              // Optionally reset the form or show success state
+              // setResults(null);
+              // setVideoFile(null);
+              // setShowMap(false);
+              // setShowUpload(true);
 
     } catch (error) {
       console.error('Submit error:', error);
