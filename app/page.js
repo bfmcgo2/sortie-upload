@@ -156,16 +156,25 @@ export default function Home() {
             formData.append('videoFile', videoFile);
             formData.append('isPublic', 'false');
 
-            const response = await fetch('/api/upload', {
+              const response = await fetch('/api/upload', {
               method: 'POST',
-              body: formData
+                body: formData
             });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Upload failed');
-      }
+              let result;
+              try {
+                result = await response.json();
+              } catch (e) {
+                const text = await response.text();
+                if (!response.ok) {
+                  throw new Error(text || 'Upload failed');
+                }
+                throw e;
+              }
+              
+              if (!response.ok) {
+                throw new Error(result.error || 'Upload failed');
+              }
 
               if (result.videoUrl) {
                 alert(`Video submitted successfully! View your video: ${window.location.origin}${result.videoUrl}`);

@@ -119,17 +119,35 @@ export default function VideoPlayer() {
         }}>
           <video
             controls
+            preload="metadata"
+            playsInline
             style={{
               width: '100%',
               maxWidth: '800px',
               height: 'auto',
               borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              backgroundColor: '#000'
             }}
+            onLoadStart={() => console.log('Video loading started')}
+            onCanPlay={() => console.log('Video can start playing')}
+            onError={(e) => console.error('Video error:', e)}
           >
             <source src={video.video_url} type={video.video_file_type} />
             Your browser does not support the video tag.
           </video>
+          
+          {/* Loading indicator */}
+          <div style={{
+            marginTop: '10px',
+            fontSize: '14px',
+            color: '#666'
+          }}>
+            {video.video_file_size > 50 * 1024 * 1024 ? 
+              'Large video - may take time to load on mobile networks' : 
+              'Video ready to play'
+            }
+          </div>
         </div>
 
         {/* Video Info */}

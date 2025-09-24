@@ -1,0 +1,33 @@
+{
+  "name": "Sortie - Video Location Scanner",
+  "short_name": "Sortie",
+  "description": "AI-powered video location scanner with interactive map",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffc27e",
+  "theme_color": "#18204aff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["travel", "video", "location"],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}

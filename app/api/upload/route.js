@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { dbHelpers, supabaseAdmin } from '../../../lib/supabase';
 import { uploadToR2, isR2Configured, getR2SignedUrl } from '../../../lib/cloudflare-r2';
 
+// Ensure this route runs on Node.js (not Edge) to allow large multipart uploads
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req) {
   try {
     const formData = await req.formData();
