@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../../lib/supabase';
+import { supabaseAdmin, validateSupabaseConfig } from '../../../../lib/supabase';
 import { getR2SignedUrl } from '../../../../lib/cloudflare-r2';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req, { params }) {
   try {
+    // Validate Supabase config at runtime
+    validateSupabaseConfig();
+    
     const { id } = await params;
 
     if (!id) {
