@@ -200,7 +200,43 @@ export default function Home() {
     setIsSubmitting(true);
     
     try {
-      // Prepare video data for upload
+      // Step 1: Get presigned URL for direct upload to R2
+      const presignedResponse = await fetch('/api/upload/presigned-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: videoFile.name,
+          contentType: videoFile.type,
+          userId: user.id
+        })
+      });
+
+      if (!presignedResponse.ok) {
+        const error = await presignedResponse.json();
+        throw new Error(error.error || 'Failed to get upload URL');
+      }
+
+      const { presignedUrl, fileKey } = await presignedResponse.json();
+
+      // Step 2: Upload file directly to R2 using presigned URL
+      console.log('Uploading file directly to R2...');
+      const uploadResponse = await fetch(presignedUrl, {
+        method: 'PUT',
+        body: videoFile,
+        headers: {
+          'Content-Type': videoFile.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file to storage');
+      }
+
+      console.log('File uploaded successfully to R2');
+
+      // Step 3: Send metadata to our API (without the file)
       const videoData = {
         filename: videoFile.name,
         fileType: videoFile.type,
@@ -211,56 +247,35 @@ export default function Home() {
         description: `A travel video with ${results.locations.length} locations`
       };
 
-            // Upload to Supabase using FormData
-            const formData = new FormData();
-            formData.append('user', JSON.stringify(user));
-            formData.append('videoData', JSON.stringify(videoData));
-            formData.append('locations', JSON.stringify(results.locations));
-            formData.append('videoFile', videoFile);
-            formData.append('isPublic', 'true');
+      const metadataResponse = await fetch('/api/upload/metadata', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user,
+          videoData,
+          locations: results.locations,
+          fileKey,
+          fileName: videoFile.name,
+          fileSize: videoFile.size,
+          fileType: videoFile.type,
+          isPublic: true
+        })
+      });
 
-              const response = await fetch('/api/upload', {
-              method: 'POST',
-                body: formData
-            });
+      if (!metadataResponse.ok) {
+        const error = await metadataResponse.json();
+        throw new Error(error.error || 'Failed to save video metadata');
+      }
 
-              let result;
-              try {
-                result = await response.json();
-              } catch (e) {
-                const text = await response.text();
-                if (!response.ok) {
-                  // Handle 413 Payload Too Large error specifically
-                  if (response.status === 413) {
-                    const fileSizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
-                    throw new Error(
-                      `File too large (${fileSizeMB} MB). The server has a size limit. ` +
-                      `Please compress your video or use a smaller file. ` +
-                      `The system will automatically compress files over 50MB, but the initial upload must be under the server limit.`
-                    );
-                  }
-                  throw new Error(text || 'Upload failed');
-                }
-                throw e;
-              }
-              
-              if (!response.ok) {
-                // Handle 413 error with better message
-                if (response.status === 413) {
-                  const fileSizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
-                  throw new Error(
-                    `File too large (${fileSizeMB} MB). The server has a size limit. ` +
-                    `Please compress your video or use a smaller file.`
-                  );
-                }
-                throw new Error(result.error || 'Upload failed');
-              }
+      const result = await metadataResponse.json();
 
-              if (result.videoUrl) {
-                alert(`Video submitted successfully! View your video: ${window.location.origin}${result.videoUrl}`);
-              } else {
-                alert('Video submitted successfully! Your travel data has been saved.');
-              }
+      if (result.videoUrl) {
+        alert(`Video submitted successfully! View your video: ${window.location.origin}${result.videoUrl}`);
+      } else {
+        alert('Video submitted successfully! Your travel data has been saved.');
+      }
               
               // Optionally reset the form or show success state
               // setResults(null);
@@ -269,8 +284,8 @@ export default function Home() {
               // setShowUpload(true);
 
     } catch (error) {
-      console.error('Submit error:', error);
-      alert(`Failed to submit video: ${error.message}`);
+      console.error('Upload error:', error);
+      alert(`Upload failed: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
