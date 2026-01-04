@@ -22,6 +22,7 @@ export default function Home() {
   const [hoveredLocationIndex, setHoveredLocationIndex] = useState(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingLocation, setIsAddingLocation] = useState(false);
 
   const removeLocation = (indexToRemove) => {
     if (!results) return;
@@ -113,6 +114,68 @@ export default function Home() {
     setSelectedLocation(null);
   };
 
+  const handleLocationAdd = (newLocation) => {
+    if (!results) return;
+    
+    // Ensure timeStartSec is a number for proper comparison
+    const newStartTime = typeof newLocation.timeStartSec === 'number' 
+      ? newLocation.timeStartSec 
+      : parseFloat(newLocation.timeStartSec) || 0;
+    
+    // Insert the new location in the correct position based on timestamp
+    const updatedLocations = [...results.locations];
+    
+    // Find the first location where start time is greater than the new location's start time
+    const insertIndex = updatedLocations.findIndex(
+      loc => {
+        const locStartTime = typeof loc.timeStartSec === 'number' 
+          ? loc.timeStartSec 
+          : parseFloat(loc.timeStartSec) || 0;
+        return locStartTime > newStartTime;
+      }
+    );
+    
+    console.log('=== ADDING LOCATION ===');
+    console.log('New location start time:', newStartTime);
+    console.log('Existing locations:', updatedLocations.map(l => ({
+      name: l.name,
+      timeStartSec: l.timeStartSec,
+      timeStartSecType: typeof l.timeStartSec
+    })));
+    console.log('Insert index:', insertIndex);
+    
+    if (insertIndex === -1) {
+      // New location is after all existing locations
+      updatedLocations.push(newLocation);
+      console.log('Inserting at end of array');
+    } else {
+      // Insert at the correct position
+      updatedLocations.splice(insertIndex, 0, newLocation);
+      console.log(`Inserting at position ${insertIndex}`);
+    }
+    
+    console.log('Final locations order:', updatedLocations.map(l => ({
+      name: l.name,
+      timeStartSec: l.timeStartSec
+    })));
+    
+    setResults({
+      ...results,
+      locations: updatedLocations
+    });
+    
+    // If the location has coordinates, pan the map to it
+    if (newLocation.coordinates) {
+      setMapCenter({
+        lat: newLocation.coordinates.lat,
+        lng: newLocation.coordinates.lng
+      });
+    }
+    
+    // Close add location modal
+    setIsAddingLocation(false);
+  };
+
   const formatTime = (sec) => {
     if (typeof sec !== 'number' || Number.isNaN(sec)) return '';
     const h = Math.floor(sec / 3600);
@@ -154,7 +217,7 @@ export default function Home() {
             formData.append('videoData', JSON.stringify(videoData));
             formData.append('locations', JSON.stringify(results.locations));
             formData.append('videoFile', videoFile);
-            formData.append('isPublic', 'false');
+            formData.append('isPublic', 'true');
 
               const response = await fetch('/api/upload', {
               method: 'POST',
@@ -167,12 +230,29 @@ export default function Home() {
               } catch (e) {
                 const text = await response.text();
                 if (!response.ok) {
+                  // Handle 413 Payload Too Large error specifically
+                  if (response.status === 413) {
+                    const fileSizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
+                    throw new Error(
+                      `File too large (${fileSizeMB} MB). The server has a size limit. ` +
+                      `Please compress your video or use a smaller file. ` +
+                      `The system will automatically compress files over 50MB, but the initial upload must be under the server limit.`
+                    );
+                  }
                   throw new Error(text || 'Upload failed');
                 }
                 throw e;
               }
               
               if (!response.ok) {
+                // Handle 413 error with better message
+                if (response.status === 413) {
+                  const fileSizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
+                  throw new Error(
+                    `File too large (${fileSizeMB} MB). The server has a size limit. ` +
+                    `Please compress your video or use a smaller file.`
+                  );
+                }
                 throw new Error(result.error || 'Upload failed');
               }
 
@@ -281,6 +361,43 @@ export default function Home() {
             {isSubmitting ? 'Submitting...' : 'Submit Video'}
           </button>
 
+          {/* Add Location Button */}
+          {videoFile && (
+            <div style={{
+              position: 'fixed',
+              bottom: '80px',
+              right: '20px',
+              zIndex: 25
+            }}>
+              <button
+                onClick={() => setIsAddingLocation(true)}
+                style={{
+                  padding: '12px 24px',
+                  background: '#18204aff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontFamily: "'Inter', sans-serif",
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                }}
+              >
+                ➕ Add Location
+              </button>
+            </div>
+          )}
+
           {/* Play Full Video Button */}
           {videoFile && (
             <div style={{
@@ -320,8 +437,8 @@ export default function Home() {
         </>
       )}
 
-      {/* Video Player Modal */}
-      {selectedLocation && videoFile && (
+      {/* Video Player Modal - Edit Mode */}
+      {selectedLocation && videoFile && !isAddingLocation && (
         <VideoPlayer
           videoFile={videoFile}
           startTime={selectedLocation.timeStartSec}
@@ -335,6 +452,22 @@ export default function Home() {
             removeLocation(index);
             setSelectedLocation(null);
           }}
+          isAddMode={false}
+        />
+      )}
+
+      {/* Video Player Modal - Add Mode */}
+      {isAddingLocation && videoFile && (
+        <VideoPlayer
+          videoFile={videoFile}
+          startTime={0}
+          endTime={null}
+          locationName="New Location"
+          onClose={() => setIsAddingLocation(false)}
+          location={null}
+          allLocations={results?.locations || []}
+          onSave={handleLocationAdd}
+          isAddMode={true}
         />
       )}
 

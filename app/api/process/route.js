@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFile, readFile } from 'fs/promises';
-import { createWorkDir, extractFirstSubtitleStream, compressVideoForWhisper } from '../../../lib/ffmpeg.js';
+import { createWorkDir, extractFirstSubtitleStream, compressVideoForWhisper, convertMovToMp4 } from '../../../lib/ffmpeg.js';
 import { transcribeWithWhisper, extractLocationsWithTimestamps } from '../../../lib/openai.js';
 import { geocodeLocations } from '../../../lib/geocode.js';
 import SRTParser2 from 'srt-parser-2';
@@ -40,8 +40,11 @@ export async function POST(req) {
     const workdir = createWorkDir();
     console.log('Work directory created:', workdir);
     
-    const inputPath = join(workdir, 'input.mp4');
+    // Get original file extension
+    const originalExt = file.name.split('.').pop().toLowerCase();
+    const inputPath = join(workdir, `input.${originalExt}`);
     console.log('Input path:', inputPath);
+    console.log('Original file extension:', originalExt);
     
     console.log('Writing file to disk...');
     await writeFile(inputPath, buffer);
@@ -73,12 +76,25 @@ export async function POST(req) {
       
       let transcriptionPath = inputPath;
       
+      // Always convert .mov files to .mp4 for Whisper compatibility
+      if (originalExt === 'mov') {
+        console.log('Converting .mov to .mp4 for Whisper compatibility...');
+        const mp4Path = join(workdir, 'converted.mp4');
+        const conversion = await convertMovToMp4(inputPath, mp4Path);
+        if (conversion.success) {
+          transcriptionPath = mp4Path;
+          console.log('Successfully converted .mov to .mp4');
+        } else {
+          console.log('Conversion failed, trying original file');
+        }
+      }
+      
       // Check if file exceeds OpenAI's 25MB limit
       const OPENAI_SIZE_LIMIT = 25 * 1024 * 1024; // 25MB
       if (buffer.length > OPENAI_SIZE_LIMIT) {
         console.log('File exceeds 25MB limit, compressing...');
         const compressedPath = join(workdir, 'compressed.mp3');
-        const compression = await compressVideoForWhisper(inputPath, compressedPath);
+        const compression = await compressVideoForWhisper(transcriptionPath, compressedPath);
         if (compression.success) {
           transcriptionPath = compressedPath;
           console.log('Using compressed file for transcription');

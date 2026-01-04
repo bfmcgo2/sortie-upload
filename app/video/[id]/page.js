@@ -131,9 +131,21 @@ export default function VideoPlayer() {
             }}
             onLoadStart={() => console.log('Video loading started')}
             onCanPlay={() => console.log('Video can start playing')}
-            onError={(e) => console.error('Video error:', e)}
+            onError={(e) => {
+              const target = e?.currentTarget;
+              console.error('Video error:', e);
+              if (target && video.video_url) {
+                // As a fallback, force the source with explicit type
+                target.innerHTML = '';
+                const src = document.createElement('source');
+                src.src = video.video_url;
+                src.type = (video.video_file_type || 'video/mp4');
+                target.appendChild(src);
+                try { target.load?.(); } catch {}
+              }
+            }}
           >
-            <source src={video.video_url} type={video.video_file_type} />
+            <source src={video.video_url} type={video.video_file_type || 'video/mp4'} />
             Your browser does not support the video tag.
           </video>
           

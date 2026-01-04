@@ -134,16 +134,18 @@ export default function LocationSidebar({ locations, onLocationClick, onLocation
             )}
 
             {/* Mention Preview */}
-            <p style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: '13px',
-              color: '#888',
-              margin: 0,
-              lineHeight: 1.4,
-              fontStyle: 'italic'
-            }}>
-              &ldquo;{location.mention.length > 80 ? location.mention.substring(0, 80) + '...' : location.mention}&rdquo;
-            </p>
+            {location.mention && (
+              <p style={{
+                fontFamily: "'Inter', sans-serif",
+                fontSize: '13px',
+                color: '#888',
+                margin: 0,
+                lineHeight: 1.4,
+                fontStyle: 'italic'
+              }}>
+                &ldquo;{location.mention.length > 80 ? location.mention.substring(0, 80) + '...' : location.mention}&rdquo;
+              </p>
+            )}
           </div>
         ))}
       </div>

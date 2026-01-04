@@ -6,7 +6,7 @@ const inter = Inter({
 })
 
 export const metadata = {
-  title: 'Sortie - AI Video Location Scanner',
+  title: 'LatLng - AI Video Location Scanner',
   description: 'AI-powered video location scanner with interactive map',
 }
 

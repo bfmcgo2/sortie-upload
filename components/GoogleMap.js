@@ -85,7 +85,7 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
     }
   }, [map, mapCenter]);
 
-  // Create markers only when map changes (not when locations change)
+  // Create markers when map or locations change
   useEffect(() => {
     if (!map || !locations?.length) return;
 
@@ -94,9 +94,20 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
             markersRef.current = [];
             markerElementsRef.current = [];
 
+            // Create bounds to fit all locations
+            const bounds = new window.google.maps.LatLngBounds();
+            let hasValidCoordinates = false;
+
             // Create new markers using AdvancedMarkerElement
             locations.forEach((location, index) => {
               if (!location.coordinates) return;
+              
+              // Add to bounds
+              bounds.extend(new window.google.maps.LatLng(
+                location.coordinates.lat,
+                location.coordinates.lng
+              ));
+              hasValidCoordinates = true;
 
               // Create marker element
               const markerElement = document.createElement('div');
@@ -115,6 +126,8 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
                 font-size: 12px;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.3);
                 transition: all 0.2s ease;
+                z-index: 1;
+                position: relative;
               `;
               markerElement.textContent = (index + 1).toString();
 
@@ -159,9 +172,9 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
               markerElementsRef.current.push(markerElement);
     });
 
-            // Only fit bounds on initial load, not when locations change
-            // This prevents resetting the map view when video overlay closes
-            // map.fitBounds() is now handled separately in the map initialization
+            // Only fit bounds on initial load, not on every location change
+            // This prevents the map from jumping when hovering over locations
+            // The bounds fitting is handled in the initial map setup
           }, [map, locations, onLocationClick]); // Added dependencies back
 
   // Update marker styles when selection or hover changes
@@ -178,6 +191,12 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
       element.style.background = isHighlighted ? '#ffffff' : '#18204aff';
       element.style.border = `3px solid ${isHighlighted ? '#18204aff' : 'white'}`;
       element.style.color = isHighlighted ? '#18204aff' : 'white';
+      
+      // Bring hovered/selected markers to the front with higher z-index
+      element.style.zIndex = isHighlighted ? '1000' : '1';
+      
+      // Also add a subtle scale effect for hovered markers
+      element.style.transform = isHovered ? 'scale(1.2)' : 'scale(1)';
     });
   }, [selectedLocationIndex, hoveredLocationIndex]);
 

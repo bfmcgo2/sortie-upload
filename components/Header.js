@@ -33,7 +33,7 @@ export default function Header({ showSubmitButton = false }) {
     <header className={styles.header}>
       {/* Logo */}
       <div className={styles.logo}>
-        sortie
+        latlng
       </div>
 
       {/* Right Section */}

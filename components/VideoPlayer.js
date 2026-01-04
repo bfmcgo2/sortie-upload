@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 
-export default function VideoPlayer({ videoFile, startTime, endTime, locationName, onClose, location, allLocations, onSave, onDelete }) {
+export default function VideoPlayer({ videoFile, startTime, endTime, locationName, onClose, location, allLocations, onSave, onDelete, isAddMode = false }) {
   
   const videoRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(startTime);
   const [isPlaying, setIsPlaying] = useState(false);
   const [actualEndTime, setActualEndTime] = useState(endTime);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(isAddMode); // Start in edit mode if adding
   const [editStartTime, setEditStartTime] = useState(startTime);
   const [editEndTime, setEditEndTime] = useState(endTime);
   const [editLocationName, setEditLocationName] = useState(location?.name || '');
@@ -34,8 +34,20 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
       }
       
       // Reset video state and set start time
-      video.currentTime = startTime;
-      setIsPlaying(false); // Reset play state
+      // Use a small delay to ensure video is ready
+      setTimeout(() => {
+        try {
+          if (video && video.readyState >= 2) {
+            video.currentTime = startTime;
+            setIsPlaying(false); // Reset play state
+          }
+        } catch (error) {
+          // Ignore errors when setting currentTime
+          if (error.name !== 'AbortError') {
+            console.log('Error setting video time:', error);
+          }
+        }
+      }, 50);
       
       // Don't auto-play, let user control it
     };
@@ -82,11 +94,22 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
     return () => {
       // Safely pause and reset video before cleanup
       try {
-        video.pause();
+        // Only pause if video is actually playing to avoid interrupting pending play() calls
+        if (!video.paused) {
+          video.pause().catch(err => {
+            // Ignore errors during cleanup
+            if (err.name !== 'AbortError') {
+              console.log('Video cleanup pause error (safe to ignore):', err);
+            }
+          });
+        }
         video.currentTime = 0;
         video.src = ''; // Clear the src to stop any pending requests
       } catch (error) {
-        console.log('Video cleanup error (safe to ignore):', error);
+        // Ignore AbortError during cleanup
+        if (error.name !== 'AbortError') {
+          console.log('Video cleanup error (safe to ignore):', error);
+        }
       }
       
       setIsPlaying(false);
@@ -122,13 +145,37 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
     return parts.join(':');
   };
 
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
     const video = videoRef.current;
-    if (video) {
+    if (!video) return;
+    
+    try {
       if (isPlaying) {
         video.pause();
       } else {
-        video.play();
+        // Wait for video to be ready before playing
+        if (video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+          await video.play();
+        } else {
+          // Wait for video to load enough data
+          const playWhenReady = () => {
+            if (video.readyState >= 2) {
+              video.play().catch(err => {
+                // Ignore AbortError - it's safe to ignore
+                if (err.name !== 'AbortError') {
+                  console.error('Play error:', err);
+                }
+              });
+              video.removeEventListener('loadeddata', playWhenReady);
+            }
+          };
+          video.addEventListener('loadeddata', playWhenReady);
+        }
+      }
+    } catch (error) {
+      // Ignore AbortError - it happens when play() is interrupted
+      if (error.name !== 'AbortError') {
+        console.error('Play/pause error:', error);
       }
     }
   };
@@ -211,42 +258,81 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
   };
 
   const handleSave = async () => {
-    if (!selectedPlace && editLocationName !== location?.name) {
+    // In add mode, require a selected place
+    if (isAddMode && !selectedPlace) {
+      alert('Please select a location from the dropdown');
+      return;
+    }
+    
+    // In edit mode, only require selection if name changed
+    if (!isAddMode && !selectedPlace && editLocationName !== location?.name) {
       alert('Please select a location from the dropdown');
       return;
     }
     
     // Validate time ranges
-    if (editStartTime >= editEndTime) {
+    if (editEndTime && editStartTime >= editEndTime) {
       alert('End time must be after start time');
       return;
     }
     
     // Check for overlaps with other locations
-    if (allLocations && location?.index !== undefined) {
-      const currentIndex = location.index;
-      
-      // Check overlap with previous location
-      if (currentIndex > 0) {
-        const prevLocation = allLocations[currentIndex - 1];
-        if (prevLocation && editStartTime < prevLocation.timeEndSec) {
-          alert(`Time range overlaps with "${prevLocation.name}" (ends at ${formatTime(prevLocation.timeEndSec)})`);
-          return;
+    if (allLocations) {
+      // Helper function to check if two time ranges overlap
+      const rangesOverlap = (start1, end1, start2, end2) => {
+        // If either range has no end time, treat it as extending indefinitely
+        // Two ranges overlap if: start1 < end2 && end1 > start2
+        // But we need to handle null end times
+        
+        if (end1 === null && end2 === null) {
+          // Both have no end - they overlap if they have the same start time
+          return start1 === start2;
+        } else if (end1 === null) {
+          // First range has no end - overlaps if it starts before second range ends
+          return start1 < end2;
+        } else if (end2 === null) {
+          // Second range has no end - overlaps if first range ends after second starts
+          return end1 > start2;
+        } else {
+          // Both have end times - standard overlap check
+          return start1 < end2 && end1 > start2;
         }
-      }
-      
-      // Check overlap with next location
-      if (currentIndex < allLocations.length - 1) {
-        const nextLocation = allLocations[currentIndex + 1];
-        if (nextLocation && editEndTime > nextLocation.timeStartSec) {
-          alert(`Time range overlaps with "${nextLocation.name}" (starts at ${formatTime(nextLocation.timeStartSec)})`);
-          return;
+      };
+
+      if (isAddMode) {
+        // For new locations, check all existing locations
+        for (const existingLoc of allLocations) {
+          const existingStart = existingLoc.timeStartSec;
+          const existingEnd = existingLoc.timeEndSec;
+          
+          if (rangesOverlap(editStartTime, editEndTime, existingStart, existingEnd)) {
+            const existingEndDisplay = existingEnd ? formatTime(existingEnd) : 'end of video';
+            alert(`Time range overlaps with "${existingLoc.name}" (${formatTime(existingStart)} - ${existingEndDisplay})`);
+            return;
+          }
+        }
+      } else if (location?.index !== undefined) {
+        // For editing, check overlaps with all other locations (excluding current)
+        const currentIndex = location.index;
+        
+        for (let i = 0; i < allLocations.length; i++) {
+          if (i === currentIndex) continue; // Skip the location being edited
+          
+          const otherLoc = allLocations[i];
+          const otherStart = otherLoc.timeStartSec;
+          const otherEnd = otherLoc.timeEndSec;
+          
+          if (rangesOverlap(editStartTime, editEndTime, otherStart, otherEnd)) {
+            const otherEndDisplay = otherEnd ? formatTime(otherEnd) : 'end of video';
+            alert(`Time range overlaps with "${otherLoc.name}" (${formatTime(otherStart)} - ${otherEndDisplay})`);
+            return;
+          }
         }
       }
     }
     
     let updatedLocation = {
-      ...location,
+      ...(location || {}),
       name: editLocationName,
       timeStartSec: editStartTime,
       timeEndSec: editEndTime,
@@ -338,46 +424,50 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ margin: 0 }}>
-            {locationName}
+            {isAddMode ? 'Add Location' : locationName}
           </h3>
-          <button
-            onClick={() => {
-              if (!isEditing) {
-                // Pause video when entering edit mode
-                if (videoRef.current) {
-                  videoRef.current.pause();
+          {!isAddMode && (
+            <button
+              onClick={() => {
+                if (!isEditing) {
+                  // Pause video when entering edit mode
+                  if (videoRef.current) {
+                    videoRef.current.pause();
+                  }
                 }
-              }
-              setIsEditing(!isEditing);
-            }}
-            style={{
-              background: '#18204aff',
-              color: 'white',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: 4,
-              fontSize: 12,
-              cursor: 'pointer',
-              fontFamily: "'Inter', sans-serif"
-            }}
-          >
-            {isEditing ? 'Cancel' : 'Edit'}
-          </button>
+                setIsEditing(!isEditing);
+              }}
+              style={{
+                background: '#18204aff',
+                color: 'white',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: 4,
+                fontSize: 12,
+                cursor: 'pointer',
+                fontFamily: "'Inter', sans-serif"
+              }}
+            >
+              {isEditing ? 'Cancel' : 'Edit'}
+            </button>
+          )}
         </div>
         
-        <video
-          key={videoKey}
-          ref={videoRef}
-          onClick={togglePlayPause}
-          style={{
-            width: '100%',
-            aspectRatio: '678 / 1198',
-            objectFit: 'cover',
-            backgroundColor: '#000',
-            cursor: 'pointer',
-            display: isEditing ? 'none' : 'block'
-          }}
-        />
+        {!isAddMode && (
+          <video
+            key={videoKey}
+            ref={videoRef}
+            onClick={togglePlayPause}
+            style={{
+              width: '100%',
+              aspectRatio: '678 / 1198',
+              objectFit: 'cover',
+              backgroundColor: '#000',
+              cursor: 'pointer',
+              display: isEditing ? 'none' : 'block'
+            }}
+          />
+        )}
         
         {/* Edit Mode */}
         {isEditing && (
@@ -395,7 +485,7 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
               color: '#18204aff',
               margin: '0 0 16px 0'
             }}>
-              Edit Location Details
+              {isAddMode ? 'Add Location Details' : 'Edit Location Details'}
             </h4>
             
             {/* Time Inputs */}
@@ -517,27 +607,34 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
             </div>
             
             {/* Save/Cancel/Delete Buttons */}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
-              <button
-                onClick={handleDelete}
-                style={{
-                  background: '#ff4444',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: 4,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  fontFamily: "'Inter', sans-serif"
-                }}
-              >
-                Delete Location
-              </button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: isAddMode ? 'flex-end' : 'space-between' }}>
+              {!isAddMode && (
+                <button
+                  onClick={handleDelete}
+                  style={{
+                    background: '#ff4444',
+                    color: 'white',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: 4,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', sans-serif"
+                  }}
+                >
+                  Delete Location
+                </button>
+              )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => {
-                    setVideoKey(prev => prev + 1); // Force video rerender
+                    if (!isAddMode) {
+                      setVideoKey(prev => prev + 1); // Force video rerender
+                    }
                     setIsEditing(false);
+                    if (isAddMode) {
+                      onClose();
+                    }
                   }}
                   style={{
                     background: 'transparent',
@@ -554,27 +651,27 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={!selectedPlace && editLocationName !== location?.name}
+                  disabled={isAddMode ? !selectedPlace : (!selectedPlace && editLocationName !== location?.name)}
                   style={{
-                    background: (!selectedPlace && editLocationName !== location?.name) ? '#ccc' : '#18204aff',
+                    background: (isAddMode ? !selectedPlace : (!selectedPlace && editLocationName !== location?.name)) ? '#ccc' : '#18204aff',
                     color: 'white',
                     border: 'none',
                     padding: '8px 16px',
                     borderRadius: 4,
                     fontSize: 12,
-                    cursor: (!selectedPlace && editLocationName !== location?.name) ? 'not-allowed' : 'pointer',
+                    cursor: (isAddMode ? !selectedPlace : (!selectedPlace && editLocationName !== location?.name)) ? 'not-allowed' : 'pointer',
                     fontFamily: "'Inter', sans-serif"
                   }}
                 >
-                  Save Changes
+                  {isAddMode ? 'Add Location' : 'Save Changes'}
                 </button>
               </div>
             </div>
           </div>
         )}
         
-        {/* Custom Controls - Only show when not editing */}
-        {!isEditing && (
+        {/* Custom Controls - Only show when not editing and not in add mode */}
+        {!isEditing && !isAddMode && (
           <div style={{ marginTop: 12 }}>
             {/* Play/Pause Button */}
             <button

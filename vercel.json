@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "app/api/upload/route.js": {
+      "maxDuration": 300,
+      "memory": 3008
+    },
+    "app/api/process/route.js": {
+      "maxDuration": 300,
+      "memory": 3008
+    }
+  }
+}
+
