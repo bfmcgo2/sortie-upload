@@ -1,12 +1,15 @@
 "use client";
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import styles from './Header.module.css';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Header({ showSubmitButton = false }) {
   const { user, login, logout, loading, isAuthenticated } = useAuth();
   const [loginLoading, setLoginLoading] = useState(false);
+  const pathname = usePathname();
 
   const handleSubmitVideo = () => {
     // TODO: Implement submit video functionality
@@ -32,12 +35,32 @@ export default function Header({ showSubmitButton = false }) {
   return (
     <header className={styles.header}>
       {/* Logo */}
-      <div className={styles.logo}>
+      <Link href="/" className={styles.logo}>
         latlng
-      </div>
+      </Link>
 
       {/* Right Section */}
       <div className={styles.rightSection}>
+        {/* My Videos Link - Show when authenticated and not on my-videos page */}
+        {isAuthenticated && pathname !== '/my-videos' && (
+          <Link 
+            href="/my-videos"
+            className={styles.myVideosLink}
+          >
+            My Videos
+          </Link>
+        )}
+
+        {/* Guides Link - Show when authenticated and not on guides page */}
+        {isAuthenticated && !pathname?.startsWith('/guides') && (
+          <Link 
+            href="/guides"
+            className={styles.myVideosLink}
+          >
+            Guides
+          </Link>
+        )}
+
         {/* Submit Video Button - Only show on map view */}
         {showSubmitButton && (
           <button 

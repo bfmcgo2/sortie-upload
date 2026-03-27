@@ -2,11 +2,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Wrapper } from '@googlemaps/react-wrapper';
 
-function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationIndex, hoveredLocationIndex }) {
+function MapComponent({ locations, pins = [], onLocationClick, mapCenter, selectedLocationIndex, hoveredLocationIndex }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
           const markersRef = useRef([]);
           const markerElementsRef = useRef([]);
+          const pinMarkersRef = useRef([]);
+          const pinMarkerElementsRef = useRef([]);
 
 
   useEffect(() => {
@@ -38,10 +40,12 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
 
             setMap(mapInstance);
             
-            // Set initial bounds to show all locations on first load
-            if (locations?.length > 0) {
+            // Set initial bounds to show all locations and pins on first load with padding
+            if ((locations?.length > 0 || pins?.length > 0)) {
               const bounds = new window.google.maps.LatLngBounds();
-              locations.forEach(location => {
+              
+              // Add locations
+              locations?.forEach(location => {
                 if (location.coordinates) {
                   bounds.extend(new window.google.maps.LatLng(
                     location.coordinates.lat,
@@ -49,7 +53,24 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
                   ));
                 }
               });
-              mapInstance.fitBounds(bounds);
+              
+              // Add pins
+              pins?.forEach(pin => {
+                if (pin.coordinates) {
+                  bounds.extend(new window.google.maps.LatLng(
+                    pin.coordinates.lat,
+                    pin.coordinates.lng
+                  ));
+                }
+              });
+              
+              // Add padding to bounds (80 pixels on all sides for better buffer)
+              mapInstance.fitBounds(bounds, {
+                top: 80,
+                right: 80,
+                bottom: 80,
+                left: 80
+              });
               
               // Ensure minimum zoom level
               const listener = window.google.maps.event.addListener(mapInstance, 'idle', () => {
@@ -85,21 +106,26 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
     }
   }, [map, mapCenter]);
 
-  // Create markers when map or locations change
+  // Create markers when map, locations, or pins change
   useEffect(() => {
-    if (!map || !locations?.length) return;
+    if (!map) return;
 
-            // Clear existing markers first
+            // Clear existing location markers first
             markersRef.current.forEach(marker => marker.setMap(null));
             markersRef.current = [];
             markerElementsRef.current = [];
 
-            // Create bounds to fit all locations
+            // Clear existing pin markers
+            pinMarkersRef.current.forEach(marker => marker.setMap(null));
+            pinMarkersRef.current = [];
+            pinMarkerElementsRef.current = [];
+
+            // Create bounds to fit all locations and pins
             const bounds = new window.google.maps.LatLngBounds();
             let hasValidCoordinates = false;
 
-            // Create new markers using AdvancedMarkerElement
-            locations.forEach((location, index) => {
+            // Create location markers using AdvancedMarkerElement
+            locations?.forEach((location, index) => {
               if (!location.coordinates) return;
               
               // Add to bounds
@@ -172,10 +198,93 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
               markerElementsRef.current.push(markerElement);
     });
 
+            // Create pin markers
+            pins?.forEach((pin, index) => {
+              if (!pin.coordinates) return;
+              
+              // Add to bounds
+              bounds.extend(new window.google.maps.LatLng(
+                pin.coordinates.lat,
+                pin.coordinates.lng
+              ));
+              hasValidCoordinates = true;
+
+              // Create marker element - use image if available, otherwise use pin emoji
+              const pinElement = document.createElement('div');
+              
+              if (pin.pinImageUrl) {
+                // Pin with custom image
+                pinElement.style.cssText = `
+                  width: 50px;
+                  height: 50px;
+                  border-radius: 50%;
+                  border: 3px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                  cursor: pointer;
+                  overflow: hidden;
+                  background: white;
+                `;
+                const img = document.createElement('img');
+                img.src = pin.pinImageUrl;
+                img.style.cssText = `
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                `;
+                pinElement.appendChild(img);
+              } else {
+                // Pin with emoji
+                pinElement.style.cssText = `
+                  width: 40px;
+                  height: 40px;
+                  background: #18204aff;
+                  border: 3px solid white;
+                  border-radius: 50%;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: white;
+                  font-weight: bold;
+                  font-size: 20px;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                  transition: all 0.2s ease;
+                `;
+                pinElement.textContent = '📍';
+              }
+
+              // Use AdvancedMarkerElement if available, fallback to regular Marker
+              let marker;
+              if (window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement) {
+                marker = new window.google.maps.marker.AdvancedMarkerElement({
+                  position: {
+                    lat: pin.coordinates.lat,
+                    lng: pin.coordinates.lng
+                  },
+                  map: map,
+                  title: pin.name,
+                  content: pinElement
+                });
+              } else {
+                marker = new window.google.maps.Marker({
+                  position: {
+                    lat: pin.coordinates.lat,
+                    lng: pin.coordinates.lng
+                  },
+                  map: map,
+                  title: pin.name,
+                  animation: window.google.maps.Animation.DROP
+                });
+              }
+
+              pinMarkersRef.current.push(marker);
+              pinMarkerElementsRef.current.push(pinElement);
+            });
+
             // Only fit bounds on initial load, not on every location change
             // This prevents the map from jumping when hovering over locations
             // The bounds fitting is handled in the initial map setup
-          }, [map, locations, onLocationClick]); // Added dependencies back
+          }, [map, locations, pins, onLocationClick]); // Added pins dependency
 
   // Update marker styles when selection or hover changes
   useEffect(() => {
@@ -211,7 +320,7 @@ function MapComponent({ locations, onLocationClick, mapCenter, selectedLocationI
   );
 }
 
-export default function GoogleMap({ locations, onLocationClick, isVisible, mapCenter, selectedLocationIndex, hoveredLocationIndex }) {
+export default function GoogleMap({ locations, pins = [], onLocationClick, isVisible, mapCenter, selectedLocationIndex, hoveredLocationIndex }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
 
   if (!apiKey) {
@@ -242,7 +351,7 @@ export default function GoogleMap({ locations, onLocationClick, isVisible, mapCe
               zIndex: 10
             }}>
               <Wrapper apiKey={apiKey} libraries={['marker', 'places']} version="weekly">
-                <MapComponent locations={locations} onLocationClick={onLocationClick} mapCenter={mapCenter} selectedLocationIndex={selectedLocationIndex} hoveredLocationIndex={hoveredLocationIndex} />
+                <MapComponent locations={locations} pins={pins} onLocationClick={onLocationClick} mapCenter={mapCenter} selectedLocationIndex={selectedLocationIndex} hoveredLocationIndex={hoveredLocationIndex} />
               </Wrapper>
     </div>
   );

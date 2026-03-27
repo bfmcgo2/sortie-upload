@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 
-export default function FullVideoPlayer({ videoFile, onClose }) {
+export default function FullVideoPlayer({ videoFile, videoUrl, onClose }) {
   const videoRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -9,19 +9,58 @@ export default function FullVideoPlayer({ videoFile, onClose }) {
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoFile) return;
+    // Accept either videoFile (File object) or videoUrl (string)
+    if (!video || (!videoFile && !videoUrl)) return;
 
-    // Create object URL for the video file
-    const videoUrl = URL.createObjectURL(videoFile);
-    video.src = videoUrl;
+    let objectUrl = null;
+    let finalVideoSrc = null;
+
+    // If we have a File object, create a blob URL
+    if (videoFile) {
+      // Validate that videoFile is a valid File or Blob
+      if (!(videoFile instanceof File) && !(videoFile instanceof Blob)) {
+        console.error('Invalid videoFile:', videoFile);
+        return;
+      }
+
+      try {
+        objectUrl = URL.createObjectURL(videoFile);
+        if (!objectUrl) {
+          console.error('Failed to create object URL');
+          return;
+        }
+        finalVideoSrc = objectUrl;
+      } catch (error) {
+        console.error('Error creating object URL:', error);
+        return;
+      }
+    } 
+    // If we have a URL string, use it directly
+    else if (videoUrl) {
+      finalVideoSrc = videoUrl;
+    }
+
+    if (finalVideoSrc) {
+      video.src = finalVideoSrc;
+    }
+
+    const handleLoadedData = () => {
+      // Use loadeddata instead of loadedmetadata for better reliability
+      if (video.duration && !isNaN(video.duration)) {
+        setDuration(video.duration);
+      }
+      // Don't auto-play - let user control it
+      setIsPlaying(false);
+    };
 
     const handleLoadedMetadata = () => {
-      setDuration(video.duration);
-      // Auto-play the full video
-      video.play().catch(error => {
-        console.log('Auto-play prevented by browser:', error);
-        setIsPlaying(false);
-      });
+      // Fallback: set duration from metadata if valid
+      if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
+        setDuration(prevDuration => {
+          // Only update if not already set
+          return prevDuration === 0 ? video.duration : prevDuration;
+        });
+      }
     };
 
     const handleTimeUpdate = () => {
@@ -35,22 +74,68 @@ export default function FullVideoPlayer({ videoFile, onClose }) {
       setIsPlaying(false);
     };
 
+    const handleError = (e) => {
+      console.error('Video error:', e);
+      const error = video.error;
+      if (error) {
+        console.error('Video error code:', error.code);
+        console.error('Video error message:', error.message);
+      }
+      setIsPlaying(false);
+    };
+
+    video.addEventListener('loadeddata', handleLoadedData);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('ended', handleEnded);
+    video.addEventListener('error', handleError);
 
     // Cleanup
     return () => {
+      // Safely pause and reset video before cleanup
+      try {
+        if (!video.paused) {
+          video.pause().catch(err => {
+            // Ignore errors during cleanup
+            if (err.name !== 'AbortError') {
+              console.log('Video cleanup pause error (safe to ignore):', err);
+            }
+          });
+        }
+        video.currentTime = 0;
+        video.src = ''; // Clear the src to stop any pending requests
+      } catch (error) {
+        // Ignore AbortError during cleanup
+        if (error.name !== 'AbortError') {
+          console.log('Video cleanup error (safe to ignore):', error);
+        }
+      }
+
+      setIsPlaying(false);
+
+      video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
-      URL.revokeObjectURL(videoUrl);
+      video.removeEventListener('error', handleError);
+
+      // Revoke blob URL after a small delay (only if we created one from File)
+      const urlToRevoke = objectUrl;
+      if (urlToRevoke) {
+        setTimeout(() => {
+          try {
+            URL.revokeObjectURL(urlToRevoke);
+          } catch (error) {
+            console.log('URL revocation error (safe to ignore):', error);
+          }
+        }, 100);
+      }
     };
-  }, [videoFile]);
+  }, [videoFile, videoUrl]);
 
   const formatTime = (sec) => {
     if (typeof sec !== 'number' || Number.isNaN(sec)) return '00:00';
@@ -62,14 +147,38 @@ export default function FullVideoPlayer({ videoFile, onClose }) {
     return parts.join(':');
   };
 
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
     const video = videoRef.current;
-    if (video) {
+    if (!video) return;
+
+    // Check if video has a valid source
+    if (!video.src && !video.currentSrc) {
+      console.error('Video has no source');
+      return;
+    }
+
+    try {
       if (isPlaying) {
         video.pause();
       } else {
-        video.play();
+        // Ensure video is ready before playing
+        if (video.readyState >= 2) {
+          await video.play();
+        } else {
+          // Wait for video to be ready
+          video.addEventListener('canplay', async () => {
+            try {
+              await video.play();
+            } catch (error) {
+              console.error('Error playing video:', error);
+              setIsPlaying(false);
+            }
+          }, { once: true });
+        }
       }
+    } catch (error) {
+      console.error('Play/pause error:', error);
+      setIsPlaying(false);
     }
   };
 
@@ -153,12 +262,26 @@ export default function FullVideoPlayer({ videoFile, onClose }) {
         <video
           ref={videoRef}
           onClick={togglePlayPause}
+          preload="metadata"
+          playsInline
+          crossOrigin="anonymous"
           style={{
             width: '100%',
             aspectRatio: '678 / 1198',
             objectFit: 'cover',
             backgroundColor: '#000',
             cursor: 'pointer'
+          }}
+          onError={(e) => {
+            console.error('Video element error:', e);
+            const video = e.currentTarget;
+            if (video && video.error) {
+              console.error('Video error details:', {
+                code: video.error.code,
+                message: video.error.message,
+                videoSrc: video.src
+              });
+            }
           }}
         />
         

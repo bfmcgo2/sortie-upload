@@ -1,6 +1,6 @@
 "use client";
 
-export default function LocationSidebar({ locations, onLocationClick, onLocationHover, selectedLocationIndex, hoveredLocationIndex }) {
+export default function LocationSidebar({ locations, onLocationClick, onLocationHover, selectedLocationIndex, hoveredLocationIndex, onAddToGuide }) {
   const formatTime = (sec) => {
     if (typeof sec !== 'number' || Number.isNaN(sec)) return '';
     const h = Math.floor(sec / 3600);
@@ -145,6 +145,40 @@ export default function LocationSidebar({ locations, onLocationClick, onLocation
               }}>
                 &ldquo;{location.mention.length > 80 ? location.mention.substring(0, 80) + '...' : location.mention}&rdquo;
               </p>
+            )}
+
+            {/* Add to Guide Button */}
+            {onAddToGuide && location.id && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToGuide(location.id);
+                }}
+                style={{
+                  marginTop: '12px',
+                  padding: '8px 16px',
+                  backgroundColor: '#18204aff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontFamily: "'Inter', sans-serif",
+                  width: '100%',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#0f1533';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#18204aff';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                ➕ Add to Guide
+              </button>
             )}
           </div>
         ))}

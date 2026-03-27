@@ -1,15 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, validateSupabaseConfig } from '../../../../lib/supabase';
-import { getR2SignedUrl } from '../../../../lib/cloudflare-r2';
-
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+import { supabaseAdmin } from '../../../../lib/supabase';
 
 export async function GET(req, { params }) {
   try {
-    // Validate Supabase config at runtime
-    validateSupabaseConfig();
-    
     const { id } = await params;
 
     if (!id) {
@@ -34,7 +27,7 @@ export async function GET(req, { params }) {
 
     // Fetch locations for this video
     const { data: locations, error: locationsError } = await supabaseAdmin
-      .from('locations')
+      .from('video_locations')
       .select('*')
       .eq('video_id', id)
       .order('time_start_sec', { ascending: true });
@@ -43,21 +36,8 @@ export async function GET(req, { params }) {
       console.error('Locations fetch error:', locationsError);
     }
 
-    // Generate a fresh signed URL for the video
-    let videoUrl = video.video_url;
-    if (video.video_filename) {
-      try {
-        videoUrl = await getR2SignedUrl(video.video_filename, 3600); // 1 hour expiration
-        console.log('✅ Generated fresh signed URL for video:', video.video_filename);
-      } catch (error) {
-        console.error('❌ Failed to generate signed URL:', error);
-        // Fall back to the stored URL if signing fails
-      }
-    }
-
     return NextResponse.json({
       ...video,
-      video_url: videoUrl,
       locations: locations || []
     });
 

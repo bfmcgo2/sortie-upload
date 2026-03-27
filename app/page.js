@@ -211,56 +211,56 @@ export default function Home() {
         description: `A travel video with ${results.locations.length} locations`
       };
 
-      // Upload to Supabase using FormData (server-to-server upload)
-      const formData = new FormData();
-      formData.append('user', JSON.stringify(user));
-      formData.append('videoData', JSON.stringify(videoData));
-      formData.append('locations', JSON.stringify(results.locations));
-      formData.append('videoFile', videoFile);
-      formData.append('isPublic', 'true');
+            // Upload to Supabase using FormData
+            const formData = new FormData();
+            formData.append('user', JSON.stringify(user));
+            formData.append('videoData', JSON.stringify(videoData));
+            formData.append('locations', JSON.stringify(results.locations));
+            formData.append('videoFile', videoFile);
+            formData.append('isPublic', 'true');
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
+              const response = await fetch('/api/upload', {
+              method: 'POST',
+                body: formData
+            });
 
-      let result;
-      try {
-        result = await response.json();
-      } catch (e) {
-        const text = await response.text();
-        if (!response.ok) {
-          // Handle 413 Payload Too Large error specifically
-          if (response.status === 413) {
-            const fileSizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
-            throw new Error(
-              `File too large (${fileSizeMB} MB). The server has a size limit. ` +
-              `Please compress your video or use a smaller file. ` +
-              `The system will automatically compress files over 50MB, but the initial upload must be under the server limit.`
-            );
-          }
-          throw new Error(text || 'Upload failed');
-        }
-        throw e;
-      }
-      
-      if (!response.ok) {
-        // Handle 413 error with better message
-        if (response.status === 413) {
-          const fileSizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
-          throw new Error(
-            `File too large (${fileSizeMB} MB). The server has a size limit. ` +
-            `Please compress your video or use a smaller file.`
-          );
-        }
-        throw new Error(result.error || 'Upload failed');
-      }
+              let result;
+              try {
+                result = await response.json();
+              } catch (e) {
+                const text = await response.text();
+                if (!response.ok) {
+                  // Handle 413 Payload Too Large error specifically
+                  if (response.status === 413) {
+                    const fileSizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
+                    throw new Error(
+                      `File too large (${fileSizeMB} MB). The server has a size limit. ` +
+                      `Please compress your video or use a smaller file. ` +
+                      `The system will automatically compress files over 50MB, but the initial upload must be under the server limit.`
+                    );
+                  }
+                  throw new Error(text || 'Upload failed');
+                }
+                throw e;
+              }
+              
+              if (!response.ok) {
+                // Handle 413 error with better message
+                if (response.status === 413) {
+                  const fileSizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
+                  throw new Error(
+                    `File too large (${fileSizeMB} MB). The server has a size limit. ` +
+                    `Please compress your video or use a smaller file.`
+                  );
+                }
+                throw new Error(result.error || 'Upload failed');
+              }
 
-      if (result.videoUrl) {
-        alert(`Video submitted successfully! View your video: ${window.location.origin}${result.videoUrl}`);
-      } else {
-        alert('Video submitted successfully! Your travel data has been saved.');
-      }
+              if (result.videoUrl) {
+                alert(`Video submitted successfully! View your video: ${window.location.origin}${result.videoUrl}`);
+              } else {
+                alert('Video submitted successfully! Your travel data has been saved.');
+              }
               
               // Optionally reset the form or show success state
               // setResults(null);
@@ -269,8 +269,8 @@ export default function Home() {
               // setShowUpload(true);
 
     } catch (error) {
-      console.error('Upload error:', error);
-      alert(`Upload failed: ${error.message}`);
+      console.error('Submit error:', error);
+      alert(`Failed to submit video: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }

@@ -7,22 +7,9 @@ import { writeFileSync, unlinkSync } from 'fs';
 // Ensure this route runs on Node.js (not Edge) to allow large multipart uploads
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 minutes for video processing
 
 export async function POST(req) {
   try {
-    // Check content length if available
-    const contentLength = req.headers.get('content-length');
-    if (contentLength) {
-      const sizeInMB = parseInt(contentLength) / (1024 * 1024);
-      console.log(`Upload request size: ${sizeInMB.toFixed(2)} MB`);
-      
-      // Warn if file is very large (though compression will handle it)
-      if (sizeInMB > 500) {
-        console.warn(`Very large upload detected: ${sizeInMB.toFixed(2)} MB`);
-      }
-    }
-    
     const formData = await req.formData();
     const user = JSON.parse(formData.get('user'));
     const videoData = JSON.parse(formData.get('videoData'));

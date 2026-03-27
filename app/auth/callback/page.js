@@ -46,15 +46,10 @@ function AuthCallbackContent() {
               refreshToken: tokenData.refresh_token
             }
           }, window.location.origin);
-          
-          // Wait a bit to ensure message is received before closing
-          setTimeout(() => {
-            window.close();
-          }, 500);
-        } else {
-          // If no opener, just close immediately (user might have navigated directly)
-          window.close();
         }
+
+        // Close popup
+        window.close();
       } catch (error) {
         console.error('Authentication error:', error);
         
@@ -64,15 +59,10 @@ function AuthCallbackContent() {
             type: 'GOOGLE_AUTH_ERROR',
             error: error.message
           }, window.location.origin);
-          
-          // Wait a bit to ensure message is received before closing
-          setTimeout(() => {
-            window.close();
-          }, 500);
-        } else {
-          // If no opener, just close immediately
-          window.close();
         }
+
+        // Close popup
+        window.close();
       }
     };
 

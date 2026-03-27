@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 
-export default function VideoPlayer({ videoFile, startTime, endTime, locationName, onClose, location, allLocations, onSave, onDelete, isAddMode = false }) {
+export default function VideoPlayer({ videoFile, videoUrl, startTime, endTime, locationName, onClose, location, allLocations, onSave, onDelete, isAddMode = false }) {
   
   const videoRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(startTime);
@@ -21,11 +21,25 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoFile) return;
+    // Accept either videoFile (File object) or videoUrl (string)
+    if (!video || (!videoFile && !videoUrl)) return;
 
-    // Create object URL for the video file
-    const videoUrl = URL.createObjectURL(videoFile);
-    video.src = videoUrl;
+    let objectUrl = null;
+    let finalVideoSrc = null;
+    
+    // If we have a File object, create a blob URL
+    if (videoFile) {
+      objectUrl = URL.createObjectURL(videoFile);
+      finalVideoSrc = objectUrl;
+    } 
+    // If we have a URL string, use it directly
+    else if (videoUrl) {
+      finalVideoSrc = videoUrl;
+    }
+
+    if (finalVideoSrc) {
+      video.src = finalVideoSrc;
+    }
 
     const handleLoadedData = () => {
       // If no endTime provided, use video duration
@@ -113,7 +127,7 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
       }
       
       setIsPlaying(false);
-      
+
       video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('seeking', handleSeeking);
@@ -121,16 +135,20 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       
-      // Revoke URL after a small delay to ensure video operations are complete
-      setTimeout(() => {
-        try {
-          URL.revokeObjectURL(videoUrl);
-        } catch (error) {
-          console.log('URL revocation error (safe to ignore):', error);
-        }
-      }, 100);
+      // Revoke blob URL after a small delay (only if we created one from File)
+      // Use a closure to capture objectUrl
+      const urlToRevoke = objectUrl;
+      if (urlToRevoke) {
+        setTimeout(() => {
+          try {
+            URL.revokeObjectURL(urlToRevoke);
+          } catch (error) {
+            console.log('URL revocation error (safe to ignore):', error);
+          }
+        }, 100);
+      }
     };
-  }, [videoFile, startTime, endTime, actualEndTime]);
+  }, [videoFile, videoUrl, startTime, endTime, actualEndTime]);
 
   // Force rerender key
   const [videoKey, setVideoKey] = useState(0);
@@ -458,6 +476,9 @@ export default function VideoPlayer({ videoFile, startTime, endTime, locationNam
             key={videoKey}
             ref={videoRef}
             onClick={togglePlayPause}
+            preload="metadata"
+            playsInline
+            crossOrigin="anonymous"
             style={{
               width: '100%',
               aspectRatio: '678 / 1198',
